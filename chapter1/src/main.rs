@@ -41,6 +41,13 @@ fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     res
 }
 
+/// Compute modular inverse of a mod p (pre: a<p, p>2)
+fn mod_inv(a: UBig, p: UBig) -> UBig {
+    // Fermat's little theorem: a ^ (p-1) = 1 (mod p)
+    // This means that a * (a ^ (p-2)) = 1 (mod p)
+    exp_mod(a, p.sub(2.as_()), p)
+}
+
 fn main() {
     let a: UBig = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);
     let b: UBig = UBig::parse_str_radix("63fe5ad54fb61ed1f6e2713feddeac53c1e064417e80be452c186237601312d0", 16);
@@ -56,4 +63,10 @@ fn main() {
     println!("exp 5 0x{:x}", exp_mod(a, 5.as_(), c));
     println!("exp 8 0x{:x}", exp_mod(a, 8.as_(), c));
     println!("exp 0x12345678 0x{:x}", exp_mod(a, 0x12345678.as_(), c));
+
+    let p = c;
+    for b in 1..10 {
+        let inv = mod_inv(b.as_(), p.as_());
+        println!("modinv({}) {}*{}={} mod p", p, b, inv, mul_mod(b.as_::<UBig>(), inv, p.as_::<UBig>()));
+    }
 }

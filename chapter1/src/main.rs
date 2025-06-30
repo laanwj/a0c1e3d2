@@ -24,6 +24,8 @@ fn add_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     type UDoubleBig = BUint<{((UBig::BITS * 2) / 64) as usize}>;
     let (l, h) = a.widening_mul(b);
+    // TODO: this doesn't actually need a double-width type, computing
+    // h * ((1 << UBig::BITS) % c) + l  mod c    would do
     let r: UDoubleBig = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
     (r % c.as_::<UDoubleBig>()).as_::<UBig>()
 }
@@ -47,6 +49,13 @@ fn mod_inv(a: UBig, p: UBig) -> UBig {
     // This means that a * (a ^ (p-2)) = 1 (mod p)
     exp_mod(a, p.sub(2.as_()), p)
 }
+
+/*
+p 0xeacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf
+g 0x937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191
+x 0x805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a
+y 0x9338b10b926178864fd45b8bf4994cb554188bf21856bb1cd19d2325eb97a250
+*/
 
 fn main() {
     let a: UBig = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);

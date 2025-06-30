@@ -44,7 +44,7 @@ fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 fn main() {
     let a: UBig = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);
     let b: UBig = UBig::parse_str_radix("63fe5ad54fb61ed1f6e2713feddeac53c1e064417e80be452c186237601312d0", 16);
-    let c: UBig = UBig::parse_str_radix("f52d567c5671f2cef7a6915d4c27cbd60f4f2613c5145438d7c67b205ebe58fc", 16);
+    let c: UBig = UBig::parse_str_radix("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16);
 
     println!("0x{:x}", add_mod(a, b, c));
     println!("0x{:x}", mul_mod(a, b, c));

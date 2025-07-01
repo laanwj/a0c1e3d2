@@ -87,9 +87,8 @@ struct PrivKey {
     pubkey: PubKey,
 }
 
-/// Generate a new ElGamal keypair.
-fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
-    let x = rand_key_mod_p(params.p);
+/// Construct an ElGamal keypair from the private key value.
+fn elgamal_from_priv(params: &DomainParameters, x: UBig) -> PrivKey {
     let y = exp_mod(params.g, x, params.p);
 
     PrivKey {
@@ -98,6 +97,11 @@ fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
             y: y,
         }
     }
+}
+
+/// Generate a new ElGamal keypair.
+fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
+    elgamal_from_priv(params, rand_key_mod_p(params.p))
 }
 
 /// ElGamal encrypt a message.
@@ -122,12 +126,7 @@ fn main() {
     };
 
     /* (test keypair) */
-    let x = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
-    let y = exp_mod(params.g, x, params.p);
-    let privkey: PrivKey = PrivKey {
-        x: x,
-        pubkey: PubKey { y: y },
-    };
+    let privkey = elgamal_from_priv(&params, UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16));
     println!("x {:x}", privkey.x);
     println!("y {:x}", privkey.pubkey.y);
 
@@ -138,6 +137,7 @@ fn main() {
     let m2 = elgamal_decrypt(&params, &privkey, c1, c2);
     println!("m2 {:x}", m2);
 
+    /* (random keypair) */
     /*
     let privkey2: PrivKey = elgamal_gen_keypair(&params);
     println!("x2 {:x}", privkey2.x);

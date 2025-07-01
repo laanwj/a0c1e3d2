@@ -50,14 +50,22 @@ fn mod_inv(a: UBig, p: UBig) -> UBig {
     exp_mod(a, p.sub(2.as_()), p)
 }
 
-/*
-p 0xeacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf
-g 0x937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191
-x 0x805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a
-y 0x9338b10b926178864fd45b8bf4994cb554188bf21856bb1cd19d2325eb97a250
-*/
+/// Generate random key mod p
+fn rand_key_mod_p(p: UBig) -> UBig {
+    // Bitmask to trim random bits.
+    let bitmask: UBig = p.wrapping_next_power_of_two().wrapping_sub(UBig::ONE);
+    let mut buf = [0u8; (UBig::BITS/8) as usize];
+    loop {
+        getrandom::fill(&mut buf).ok();
+        let r: UBig = UBig::from_be_slice(&buf).unwrap() & bitmask;
+        if r < p {
+            return r;
+        }
+    }
+}
 
 fn main() {
+    /*
     let a: UBig = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);
     let b: UBig = UBig::parse_str_radix("63fe5ad54fb61ed1f6e2713feddeac53c1e064417e80be452c186237601312d0", 16);
     let c: UBig = UBig::parse_str_radix("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16);
@@ -78,4 +86,20 @@ fn main() {
         let inv = mod_inv(b.as_(), p.as_());
         println!("modinv({}) {}*{}={} mod p", p, b, inv, mul_mod(b.as_::<UBig>(), inv, p.as_::<UBig>()));
     }
+    */
+
+    /* (domain parameters) */
+    let p: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
+    let g: UBig = UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16);
+
+    /* (private key) */
+    let x: UBig = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
+    let y: UBig = exp_mod(g, x, p);
+    println!("x {:x}", x);
+    println!("y {:x}", y);
+
+    let x2: UBig = rand_key_mod_p(p);
+    let y2: UBig = exp_mod(g, x2, p);
+    println!("x2 {:x}", x2);
+    println!("y2 {:x}", y2);
 }

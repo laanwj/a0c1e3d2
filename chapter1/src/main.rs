@@ -49,7 +49,7 @@ fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 
 /// Compute modular inverse of a mod p (pre: a<p, p>2)
 #[allow(dead_code)]
-fn mod_inv(a: UBig, p: UBig) -> UBig {
+fn inv_mod(a: UBig, p: UBig) -> UBig {
     // Fermat's little theorem: a ^ (p-1) = 1 (mod p)
     // This means that a * (a ^ (p-2)) = 1 (mod p)
     exp_mod(a, p.sub(2.as_()), p)
@@ -115,7 +115,7 @@ fn elgamal_encrypt(params: &DomainParameters, pubkey: &PubKey, m: UBig) -> (UBig
 
 /// ElGamal decrypt a message.
 fn elgamal_decrypt(params: &DomainParameters, privkey: &PrivKey, c1: UBig, c2: UBig) -> UBig {
-    mul_mod(mod_inv(exp_mod(c1, privkey.x, params.p), params.p), c2, params.p)
+    mul_mod(inv_mod(exp_mod(c1, privkey.x, params.p), params.p), c2, params.p)
 }
 
 fn main() {
@@ -168,7 +168,7 @@ mod tests {
         let p = c;
         for b in 1u32..10u32 {
             let b_big = UBig::from(b);
-            let inv = mod_inv(b_big, p);
+            let inv = inv_mod(b_big, p);
             let mult = mul_mod(b_big, inv, p);
             assert_eq!(mult, UBig::ONE);
             // println!("modinv({}) {}*{}={} mod p", p, b, inv, mult);

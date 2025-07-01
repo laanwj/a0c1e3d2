@@ -29,15 +29,15 @@ fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     // TODO: does this actually need a double-width type, would computing
     // h * ((1 << UBig::BITS) % c) + l  mod c do?
     // (yes, but this doesn't work around the need for a larger type)
-    let r: UDoubleBig = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
+    let r = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
     (r % c.as_::<UDoubleBig>()).as_::<UBig>()
 }
 
 /// Compute a^b mod c (pre: a<c)
 #[allow(dead_code)]
 fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
-    let mut res: UBig = UBig::ONE;
-    let mut cur: UBig = a;
+    let mut res = UBig::ONE;
+    let mut cur = a;
     for bit in 0..UBig::BITS {
         if b.bit(bit) {
             res = mul_mod(res, cur, c);
@@ -59,11 +59,11 @@ fn mod_inv(a: UBig, p: UBig) -> UBig {
 #[allow(dead_code)]
 fn rand_key_mod_p(p: UBig) -> UBig {
     // Bitmask to trim random bits.
-    let bitmask: UBig = p.wrapping_next_power_of_two().wrapping_sub(UBig::ONE);
+    let bitmask = p.wrapping_next_power_of_two().wrapping_sub(UBig::ONE);
     let mut buf = [0u8; (UBig::BITS/8) as usize];
     loop {
         getrandom::fill(&mut buf).ok();
-        let r: UBig = UBig::from_be_slice(&buf).unwrap() & bitmask;
+        let r = UBig::from_be_slice(&buf).unwrap() & bitmask;
         if r < p {
             return r;
         }
@@ -84,34 +84,34 @@ struct PubKey {
 /// ElGamal private key.
 struct PrivKey {
     x: UBig,
-    pk: PubKey,
+    pubkey: PubKey,
 }
 
 /// Generate a new ElGamal keypair.
 fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
-    let x: UBig = rand_key_mod_p(params.p);
-    let y: UBig = exp_mod(params.g, x, params.p);
+    let x = rand_key_mod_p(params.p);
+    let y = exp_mod(params.g, x, params.p);
 
     PrivKey {
         x: x,
-        pk: PubKey {
+        pubkey: PubKey {
             y: y,
         }
     }
 }
 
 /// ElGamal encrypt a message.
-fn elgamal_encrypt(params: &DomainParameters, pubkey: &PubKey, m: &UBig) -> (UBig, UBig) {
+fn elgamal_encrypt(params: &DomainParameters, pubkey: &PubKey, m: UBig) -> (UBig, UBig) {
     // Ephermal key.
     let k = rand_key_mod_p(params.p);
     let c1 = exp_mod(params.g, k, params.p);
-    let c2 = mul_mod(*m, exp_mod(pubkey.y, k, params.p), params.p);
+    let c2 = mul_mod(m, exp_mod(pubkey.y, k, params.p), params.p);
     (c1, c2)
 }
 
 /// ElGamal decrypt a message.
-fn elgamal_decrypt(params: &DomainParameters, privkey: &PrivKey, c1: &UBig, c2: &UBig) -> UBig {
-    mul_mod(mod_inv(exp_mod(*c1, privkey.x, params.p), params.p), *c2, params.p)
+fn elgamal_decrypt(params: &DomainParameters, privkey: &PrivKey, c1: UBig, c2: UBig) -> UBig {
+    mul_mod(mod_inv(exp_mod(c1, privkey.x, params.p), params.p), c2, params.p)
 }
 
 fn main() {
@@ -121,19 +121,28 @@ fn main() {
         g: UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16),
     };
 
-    /* (keypair) */
-    let x: UBig = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
-    let y: UBig = exp_mod(params.g, x, params.p);
+    /* (test keypair) */
+    let x = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
+    let y = exp_mod(params.g, x, params.p);
     let privkey: PrivKey = PrivKey {
         x: x,
-        pk: PubKey { y: y },
+        pubkey: PubKey { y: y },
     };
     println!("x {:x}", privkey.x);
-    println!("y {:x}", privkey.pk.y);
+    println!("y {:x}", privkey.pubkey.y);
 
+    let m = UBig::parse_str_radix("12345", 16);
+    let (c1, c2) = elgamal_encrypt(&params, &privkey.pubkey, m);
+    println!("c1 {:x}", c1);
+    println!("c2 {:x}", c2);
+    let m2 = elgamal_decrypt(&params, &privkey, c1, c2);
+    println!("m2 {:x}", m2);
+
+    /*
     let privkey2: PrivKey = elgamal_gen_keypair(&params);
     println!("x2 {:x}", privkey2.x);
     println!("y2 {:x}", privkey2.pk.y);
+    */
 }
 
 #[cfg(test)]
@@ -142,9 +151,9 @@ mod tests {
 
     #[test]
     fn tests() {
-        let a: UBig = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);
-        let b: UBig = UBig::parse_str_radix("63fe5ad54fb61ed1f6e2713feddeac53c1e064417e80be452c186237601312d0", 16);
-        let c: UBig = UBig::parse_str_radix("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16);
+        let a = UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16);
+        let b = UBig::parse_str_radix("63fe5ad54fb61ed1f6e2713feddeac53c1e064417e80be452c186237601312d0", 16);
+        let c = UBig::parse_str_radix("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16);
 
         assert_eq!(add_mod(a, b, c), UBig::parse_str_radix("8b2e8581014d084965665c74c76e60d3c77832b9ad4a7b17270f667b7cbf42b", 16));
         assert_eq!(mul_mod(a, b, c), UBig::parse_str_radix("d464555ce28a5038f079c5deb138d690ce17b5494e74cfd476ce90d8111a977f", 16));

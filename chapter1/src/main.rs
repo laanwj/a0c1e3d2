@@ -100,6 +100,20 @@ fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
     }
 }
 
+/// ElGamal encrypt a message.
+fn elgamal_encrypt(params: &DomainParameters, pubkey: &PubKey, m: &UBig) -> (UBig, UBig) {
+    // Ephermal key.
+    let k = rand_key_mod_p(params.p);
+    let c1 = exp_mod(params.g, k, params.p);
+    let c2 = mul_mod(*m, exp_mod(pubkey.y, k, params.p), params.p);
+    (c1, c2)
+}
+
+/// ElGamal decrypt a message.
+fn elgamal_decrypt(params: &DomainParameters, privkey: &PrivKey, c1: &UBig, c2: &UBig) -> UBig {
+    mul_mod(mod_inv(exp_mod(*c1, privkey.x, params.p), params.p), *c2, params.p)
+}
+
 fn main() {
     /* (domain parameters) */
     let params: DomainParameters = DomainParameters {
@@ -110,7 +124,7 @@ fn main() {
     /* (keypair) */
     let x: UBig = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
     let y: UBig = exp_mod(params.g, x, params.p);
-    let privkey: PrivKey = PrivKey{
+    let privkey: PrivKey = PrivKey {
         x: x,
         pk: PubKey { y: y },
     };

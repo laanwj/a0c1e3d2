@@ -9,6 +9,7 @@ use bnum::cast::As;
 type UBig = U256;
 
 /// Compute a+b mod c (pre: a<c and b<c)
+#[allow(dead_code)]
 fn add_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     let (l, h) = a.carrying_add(b, false);
     if h { // Carry
@@ -21,16 +22,19 @@ fn add_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 }
 
 /// Compute a*b mod c (pre: a<c and b<c)
+#[allow(dead_code)]
 fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     type UDoubleBig = BUint<{((UBig::BITS * 2) / 64) as usize}>;
     let (l, h) = a.widening_mul(b);
-    // TODO: this doesn't actually need a double-width type, computing
-    // h * ((1 << UBig::BITS) % c) + l  mod c    would do
+    // TODO: does this actually need a double-width type, would computing
+    // h * ((1 << UBig::BITS) % c) + l  mod c do?
+    // (yes, but this doesn't work around the need for a larger type)
     let r: UDoubleBig = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
     (r % c.as_::<UDoubleBig>()).as_::<UBig>()
 }
 
 /// Compute a^b mod c (pre: a<c)
+#[allow(dead_code)]
 fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     let mut res: UBig = UBig::ONE;
     let mut cur: UBig = a;
@@ -44,6 +48,7 @@ fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 }
 
 /// Compute modular inverse of a mod p (pre: a<p, p>2)
+#[allow(dead_code)]
 fn mod_inv(a: UBig, p: UBig) -> UBig {
     // Fermat's little theorem: a ^ (p-1) = 1 (mod p)
     // This means that a * (a ^ (p-2)) = 1 (mod p)
@@ -51,6 +56,7 @@ fn mod_inv(a: UBig, p: UBig) -> UBig {
 }
 
 /// Generate random key mod p
+#[allow(dead_code)]
 fn rand_key_mod_p(p: UBig) -> UBig {
     // Bitmask to trim random bits.
     let bitmask: UBig = p.wrapping_next_power_of_two().wrapping_sub(UBig::ONE);
@@ -64,21 +70,56 @@ fn rand_key_mod_p(p: UBig) -> UBig {
     }
 }
 
+/// ElGamal domain parameters.
+struct DomainParameters {
+    p: UBig,
+    g: UBig,
+}
+
+/// ElGamal public key.
+struct PubKey {
+    y: UBig,
+}
+
+/// ElGamal private key.
+struct PrivKey {
+    x: UBig,
+    pk: PubKey,
+}
+
+/// Generate a new ElGamal keypair.
+fn elgamal_gen_keypair(params: &DomainParameters) -> PrivKey {
+    let x: UBig = rand_key_mod_p(params.p);
+    let y: UBig = exp_mod(params.g, x, params.p);
+
+    PrivKey {
+        x: x,
+        pk: PubKey {
+            y: y,
+        }
+    }
+}
+
 fn main() {
     /* (domain parameters) */
-    let p: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
-    let g: UBig = UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16);
+    let params: DomainParameters = DomainParameters {
+        p: UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16),
+        g: UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16),
+    };
 
-    /* (private key) */
+    /* (keypair) */
     let x: UBig = UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16);
-    let y: UBig = exp_mod(g, x, p);
-    println!("x {:x}", x);
-    println!("y {:x}", y);
+    let y: UBig = exp_mod(params.g, x, params.p);
+    let privkey: PrivKey = PrivKey{
+        x: x,
+        pk: PubKey { y: y },
+    };
+    println!("x {:x}", privkey.x);
+    println!("y {:x}", privkey.pk.y);
 
-    let x2: UBig = rand_key_mod_p(p);
-    let y2: UBig = exp_mod(g, x2, p);
-    println!("x2 {:x}", x2);
-    println!("y2 {:x}", y2);
+    let privkey2: PrivKey = elgamal_gen_keypair(&params);
+    println!("x2 {:x}", privkey2.x);
+    println!("y2 {:x}", privkey2.pk.y);
 }
 
 #[cfg(test)]

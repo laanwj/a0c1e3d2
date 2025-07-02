@@ -50,7 +50,7 @@ pub trait GroupElement {
 fn group_exp<T: GroupElement + Copy>(a: T, b: UBig) -> T {
     let mut res = a.identity();
     let mut cur = a;
-    for bit in 0..UBig::BITS {
+    for bit in 0..(UBig::BITS - b.leading_zeros()) {
         if b.bit(bit) {
             res = res.operator(cur);
         }

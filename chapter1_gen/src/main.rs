@@ -40,15 +40,15 @@ fn rand_key_mod_p(p: UBig) -> UBig {
 
 /// An element of a finite Abelian group
 pub trait GroupElement {
-    const IDENTITY: Self;
-    const ORDER: UBig;
+    fn identity(self) -> Self;
+    fn order(self) -> UBig;
 
     fn operator(self, other: Self) -> Self;
 }
 
 /// Compute a^b
 fn group_exp<T: GroupElement + Copy>(a: T, b: UBig) -> T {
-    let mut res = T::IDENTITY;
+    let mut res = a.identity();
     let mut cur = a;
     for bit in 0..UBig::BITS {
         if b.bit(bit) {
@@ -61,7 +61,7 @@ fn group_exp<T: GroupElement + Copy>(a: T, b: UBig) -> T {
 
 /// Compute a^-1
 fn group_inv<T: GroupElement + Copy>(a: T) -> T {
-    group_exp(a, T::ORDER.sub(UBig::ONE))
+    group_exp(a, a.order().sub(UBig::ONE))
 }
 
 //////////////////// ElGamal implementation.
@@ -98,13 +98,13 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
     /// Generate a new ElGamal keypair.
     #[allow(dead_code)]
     fn gen_keypair(&self) -> PrivKey<T> {
-        self.from_priv(rand_key_mod_p(T::ORDER))
+        self.from_priv(rand_key_mod_p(self.g.order()))
     }
 
     /// ElGamal encrypt a message.
     fn encrypt(&self, pubkey: &PubKey<T>, m: T) -> (T, T) {
         // Ephermal key.
-        let k = rand_key_mod_p(T::ORDER);
+        let k = rand_key_mod_p(self.g.order());
         let c1 = group_exp(self.g, k);
         let c2 = m.operator(group_exp(pubkey.y, k));
         (c1, c2)
@@ -120,21 +120,22 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
 
 #[derive(Clone, Copy)]
 struct ZStarElement {
-    v: UBig
-}
-
-impl ZStarElement {
-    const MODULUS: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
+    v: UBig,
+    p: UBig,
 }
 
 impl GroupElement for ZStarElement {
     /// Multiplicative identity
-    const IDENTITY: ZStarElement = ZStarElement { v: UBig::ONE };
+    fn identity(self) -> Self {
+        ZStarElement { v: UBig::ONE, p: self.p }
+    }
     /// Order of ZStar is p - 1
-    const ORDER: UBig = Self::MODULUS.sub(UBig::ONE);
+    fn order(self) -> UBig {
+        self.p.sub(UBig::ONE)
+    }
 
     fn operator(self, other: Self) -> Self {
-        ZStarElement { v: mul_mod(self.v, other.v, Self::MODULUS) }
+        ZStarElement { v: mul_mod(self.v, other.v, self.p), p: self.p }
     }
 }
 
@@ -143,7 +144,10 @@ impl GroupElement for ZStarElement {
 fn main() {
     /* (domain parameters) */
     let params: DomainParameters<ZStarElement> = DomainParameters {
-        g: ZStarElement { v: UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16) },
+        g: ZStarElement {
+            v: UBig::parse_str_radix("937a57cdc95f6717f6d90b4286568c2c9aca750bfd1069b00cbf28abc17ba191", 16),
+            p: UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16),
+        },
     };
 
     /* (test keypair) */
@@ -151,7 +155,7 @@ fn main() {
     println!("x {:x}", privkey.x);
     println!("y {:x}", privkey.pubkey.y.v);
 
-    let m = ZStarElement { v: UBig::parse_str_radix("12345", 16) };
+    let m = ZStarElement { v: UBig::parse_str_radix("12345", 16), p: params.g.p };
     let (c1, c2) = params.encrypt(&privkey.pubkey, m);
     println!("c1 {:x}", c1.v);
     println!("c2 {:x}", c2.v);

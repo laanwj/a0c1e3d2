@@ -1,0 +1,8 @@
+[package]
+name = "chapter1_gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bnum = "0.13.0"
+getrandom = "0.3.3"

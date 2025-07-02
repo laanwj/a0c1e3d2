@@ -52,7 +52,7 @@ fn exp_mod(a: UBig, b: UBig, c: UBig) -> UBig {
 fn inv_mod(a: UBig, p: UBig) -> UBig {
     // Fermat's little theorem: a ^ (p-1) = 1 (mod p)
     // This means that a * (a ^ (p-2)) = 1 (mod p)
-    exp_mod(a, p.sub(2.as_()), p)
+    exp_mod(a, p.sub(UBig::TWO), p)
 }
 
 /// Generate random key mod p

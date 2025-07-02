@@ -1,14 +1,14 @@
 // Exercise 5 for Crypto Camp week 1
 // Mara van Der Laan 2025
 // SPDX-License-Identifier: MIT
-use bnum::types::U256;
+use bnum::types::U512;
 use bnum::BUint;
 use bnum::cast::CastFrom;
 
 //////////////////// Utilities.
 
 /// The unsigned bignum type to use.
-type UBig = U256;
+type UBig = U512;
 
 /// Compute a*b mod c (pre: a<c and b<c)
 fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
@@ -102,12 +102,17 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
     }
 
     /// ElGamal encrypt a message.
-    fn encrypt(&self, pubkey: &PubKey<T>, m: T) -> (T, T) {
-        // Ephermal key.
-        let k = rand_key_mod_p(self.g.order());
+    fn encrypt_k(&self, pubkey: &PubKey<T>, m: T, k: UBig) -> (T, T) {
         let c1 = group_exp(self.g, k);
         let c2 = m.operator(group_exp(pubkey.y, k));
         (c1, c2)
+    }
+
+    /// ElGamal encrypt a message.
+    fn encrypt(&self, pubkey: &PubKey<T>, m: T) -> (T, T) {
+        // Ephermal key.
+        let k = rand_key_mod_p(self.g.order());
+        self.encrypt_k(pubkey, m, k)
     }
 
     /// ElGamal decrypt a message.
@@ -120,7 +125,9 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
 
 #[derive(Clone, Copy)]
 struct ZStarElement {
+    /// Value of element.
     v: UBig,
+    /// Modulus of group (yes, ideally this should be on a parameter struct, not here).
     p: UBig,
 }
 
@@ -161,4 +168,100 @@ fn main() {
     println!("c2 {:x}", c2.v);
     let m2 = params.decrypt(&privkey, c1, c2);
     println!("m2 {:x}", m2.v);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn elgamal_tests() {
+        // https://gist.github.com/devinrsmith/19256389288b7e9ff5685a658f9b22d1#file-found_elgamal_test_vectors-csv
+        struct Test {
+            p: UBig,
+            g: UBig,
+            x: UBig,
+            k: UBig,
+            m: UBig,
+            a: UBig,
+            b: UBig,
+        }
+        const CASES: &[Test] = &[
+            Test {
+                p: UBig::parse_str_radix("71", 10),
+                g: UBig::parse_str_radix("33", 10),
+                x: UBig::parse_str_radix("62", 10),
+                k: UBig::parse_str_radix("31", 10),
+                m: UBig::parse_str_radix("15", 10),
+                a: UBig::parse_str_radix("62", 10),
+                b: UBig::parse_str_radix("18", 10),
+            },
+            Test {
+                p: UBig::parse_str_radix("23", 10),
+                g: UBig::parse_str_radix("11", 10),
+                x: UBig::parse_str_radix("6", 10),
+                k: UBig::parse_str_radix("3", 10),
+                m: UBig::parse_str_radix("10", 10),
+                a: UBig::parse_str_radix("20", 10),
+                b: UBig::parse_str_radix("22", 10),
+            },
+            Test {
+                p: UBig::parse_str_radix("809", 10),
+                g: UBig::parse_str_radix("3", 10),
+                x: UBig::parse_str_radix("68", 10),
+                k: UBig::parse_str_radix("89", 10),
+                m: UBig::parse_str_radix("100", 10),
+                a: UBig::parse_str_radix("345", 10),
+                b: UBig::parse_str_radix("517", 10),
+            },
+            Test {
+                p: UBig::parse_str_radix("17", 10),
+                g: UBig::parse_str_radix("6", 10),
+                x: UBig::parse_str_radix("5", 10),
+                k: UBig::parse_str_radix("10", 10),
+                m: UBig::parse_str_radix("13", 10),
+                a: UBig::parse_str_radix("15", 10),
+                b: UBig::parse_str_radix("9", 10),
+            },
+            Test {
+                p: UBig::parse_str_radix("84265675725482892459719348378630146162719620409152809167814480007059199482163", 10),
+                g: UBig::parse_str_radix("5", 10),
+                x: UBig::parse_str_radix("2799014790424892046701478888900891009403869701173893426", 10),
+                k: UBig::parse_str_radix("23517683968368899022119256606644551548285683288848885921", 10),
+                m: UBig::parse_str_radix("87521618088882658227876453", 10),
+                a: UBig::parse_str_radix("22954586883013884818653063688294540134886732496160582262267014428782771199687", 10),
+                b: UBig::parse_str_radix("56046128113101346099694619669629128017849277484825379502821514323706183544424", 10),
+            },
+            Test {
+                p: UBig::parse_str_radix("12658517083168187407924345155971956101250996576825115113297001855799796437288935576230034157578333666497170430505565580165565829633685607504706642034926119", 10),
+                g: UBig::parse_str_radix("7", 10),
+                x: UBig::parse_str_radix("2001688878140630728014209681954697141876038523595247208", 10),
+                k: UBig::parse_str_radix("5446024688717452254835115775456957961297236108858862823", 10),
+                m: UBig::parse_str_radix("87521618088882658227876453", 10),
+                a: UBig::parse_str_radix("2150519483988769855483983776372336742288374425191291528256965705108393490638750082340115568718132372731853110762124400441550538499580316268601341087676203", 10),
+                b: UBig::parse_str_radix("1540471266850557563382406324432354117072109094950140952195099581066490559252112349492583688225692526496193879919152401794896907007394565292272866724291488", 10),
+            },
+        ];
+        for case in CASES {
+            let params: DomainParameters<ZStarElement> = DomainParameters {
+                g: ZStarElement {
+                    v: case.g,
+                    p: case.p,
+                },
+            };
+
+            /* test encrypt */
+            let privkey = params.from_priv(case.x);
+            let m = ZStarElement { v: case.m, p: params.g.p };
+            let (c1, c2) = params.encrypt_k(&privkey.pubkey, m, case.k);
+            assert_eq!(c1.v, case.a);
+            assert_eq!(c2.v, case.b);
+
+            /* test decrypt */
+            let c1_d = ZStarElement { v: case.a, p: params.g.p };
+            let c2_d = ZStarElement { v: case.b, p: params.g.p };
+            let m_d = params.decrypt(&privkey, c1_d, c2_d);
+            assert_eq!(m_d.v, case.m);
+        }
+    }
 }

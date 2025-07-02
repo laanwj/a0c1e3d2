@@ -34,6 +34,7 @@ fn rand_key_mod_p(p: UBig) -> UBig {
     }
 }
 
+/// An element of a finite Abelian group
 pub trait GroupElement {
     const IDENTITY: Self;
     const ORDER: UBig;
@@ -89,36 +90,39 @@ struct PrivKey<T: GroupElement> {
     pubkey: PubKey<T>,
 }
 
-/// Construct an ElGamal keypair from the private key value.
-fn elgamal_from_priv<T: GroupElement + Copy>(params: &DomainParameters<T>, x: UBig) -> PrivKey<T> {
-    let y = group_exp(params.g, x);
 
-    PrivKey {
-        x: x,
-        pubkey: PubKey {
-            y: y,
+impl<T: GroupElement + Copy> DomainParameters<T> {
+    /// Construct an ElGamal keypair from the private key value.
+    fn from_priv(&self, x: UBig) -> PrivKey<T> {
+        let y = group_exp(self.g, x);
+
+        PrivKey {
+            x: x,
+            pubkey: PubKey {
+                y: y,
+            }
         }
     }
-}
 
-/// Generate a new ElGamal keypair.
-#[allow(dead_code)]
-fn elgamal_gen_keypair<T: GroupElement + Copy>(params: &DomainParameters<T>) -> PrivKey<T> {
-    elgamal_from_priv(params, rand_key_mod_p(T::ORDER))
-}
+    /// Generate a new ElGamal keypair.
+    #[allow(dead_code)]
+    fn gen_keypair(&self) -> PrivKey<T> {
+        self.from_priv(rand_key_mod_p(T::ORDER))
+    }
 
-/// ElGamal encrypt a message.
-fn elgamal_encrypt<T: GroupElement + Copy>(params: &DomainParameters<T>, pubkey: &PubKey<T>, m: T) -> (T, T) {
-    // Ephermal key.
-    let k = rand_key_mod_p(T::ORDER);
-    let c1 = group_exp(params.g, k);
-    let c2 = m.operator(group_exp(pubkey.y, k));
-    (c1, c2)
-}
+    /// ElGamal encrypt a message.
+    fn encrypt(&self, pubkey: &PubKey<T>, m: T) -> (T, T) {
+        // Ephermal key.
+        let k = rand_key_mod_p(T::ORDER);
+        let c1 = group_exp(self.g, k);
+        let c2 = m.operator(group_exp(pubkey.y, k));
+        (c1, c2)
+    }
 
-/// ElGamal decrypt a message.
-fn elgamal_decrypt<T: GroupElement + Copy>(_params: &DomainParameters<T>, privkey: &PrivKey<T>, c1: T, c2: T) -> T {
-    group_inv(group_exp(c1, privkey.x)).operator(c2)
+    /// ElGamal decrypt a message.
+    fn decrypt(&self, privkey: &PrivKey<T>, c1: T, c2: T) -> T {
+        group_inv(group_exp(c1, privkey.x)).operator(c2)
+    }
 }
 
 fn main() {
@@ -128,14 +132,14 @@ fn main() {
     };
 
     /* (test keypair) */
-    let privkey = elgamal_from_priv(&params, UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16));
+    let privkey = params.from_priv(UBig::parse_str_radix("805bc6597f53ef8feb7bc4490eb33579bc9ed7b6ad44390e3ed29e5b4df9e52a", 16));
     println!("x {:x}", privkey.x);
     println!("y {:x}", privkey.pubkey.y.v);
 
     let m = ZStarElement { v: UBig::parse_str_radix("12345", 16) };
-    let (c1, c2) = elgamal_encrypt(&params, &privkey.pubkey, m);
+    let (c1, c2) = params.encrypt(&privkey.pubkey, m);
     println!("c1 {:x}", c1.v);
     println!("c2 {:x}", c2.v);
-    let m2 = elgamal_decrypt(&params, &privkey, c1, c2);
+    let m2 = params.decrypt(&privkey, c1, c2);
     println!("m2 {:x}", m2.v);
 }

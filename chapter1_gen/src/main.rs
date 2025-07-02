@@ -101,14 +101,14 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
         self.from_priv(rand_key_mod_p(self.g.order()))
     }
 
-    /// ElGamal encrypt a message.
+    /// ElGamal encrypt a message (provided k).
     fn encrypt_k(&self, pubkey: &PubKey<T>, m: T, k: UBig) -> (T, T) {
         let c1 = group_exp(self.g, k);
         let c2 = m.operator(group_exp(pubkey.y, k));
         (c1, c2)
     }
 
-    /// ElGamal encrypt a message.
+    /// ElGamal encrypt a message (random k).
     fn encrypt(&self, pubkey: &PubKey<T>, m: T) -> (T, T) {
         // Ephermal key.
         let k = rand_key_mod_p(self.g.order());

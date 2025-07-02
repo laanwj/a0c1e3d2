@@ -1,11 +1,11 @@
-// Exercises for Crypto Camp week 1
+// Exercises 1/2/3 for Crypto Camp week 1
 // Mara van Der Laan 2025
 // SPDX-License-Identifier: MIT
 use bnum::cast::CastFrom;
 use bnum::types::U256;
 use bnum::BUint;
 
-/// The unsigned fixed-size bignum type to use.
+/// The unsigned bignum type to use.
 type UBig = U256;
 
 /// Compute a+b mod c (pre: a<c and b<c)

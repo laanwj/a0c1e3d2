@@ -1,11 +1,13 @@
-// Exercises for Crypto Camp week 1
+// Exercise 5 for Crypto Camp week 1
 // Mara van Der Laan 2025
 // SPDX-License-Identifier: MIT
 use bnum::types::U256;
 use bnum::BUint;
 use bnum::cast::CastFrom;
 
-/// The unsigned fixed-size bignum type to use.
+//////////////////// Utilities.
+
+/// The unsigned bignum type to use.
 type UBig = U256;
 
 /// Compute a*b mod c (pre: a<c and b<c)
@@ -34,26 +36,14 @@ fn rand_key_mod_p(p: UBig) -> UBig {
     }
 }
 
+//////////////////// Generic group implementation.
+
 /// An element of a finite Abelian group
 pub trait GroupElement {
     const IDENTITY: Self;
     const ORDER: UBig;
 
     fn operator(self, other: Self) -> Self;
-}
-
-#[derive(Clone, Copy)]
-struct ZStarElement {
-    v: UBig
-}
-
-impl GroupElement for ZStarElement {
-    const IDENTITY: ZStarElement = ZStarElement { v: UBig::ONE};
-    const ORDER: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
-
-    fn operator(self, other: Self) -> Self {
-        ZStarElement { v: mul_mod(self.v, other.v, Self::ORDER) }
-    }
 }
 
 /// Compute a^b
@@ -74,6 +64,8 @@ fn group_inv<T: GroupElement + Copy>(a: T) -> T {
     group_exp(a, T::ORDER.sub(UBig::TWO))
 }
 
+//////////////////// ElGamal implementation.
+
 /// ElGamal domain parameters.
 struct DomainParameters<T: GroupElement> {
     g: T,
@@ -89,7 +81,6 @@ struct PrivKey<T: GroupElement> {
     x: UBig,
     pubkey: PubKey<T>,
 }
-
 
 impl<T: GroupElement + Copy> DomainParameters<T> {
     /// Construct an ElGamal keypair from the private key value.
@@ -124,6 +115,24 @@ impl<T: GroupElement + Copy> DomainParameters<T> {
         group_inv(group_exp(c1, privkey.x)).operator(c2)
     }
 }
+
+//////////////////// Specific group implementation.
+
+#[derive(Clone, Copy)]
+struct ZStarElement {
+    v: UBig
+}
+
+impl GroupElement for ZStarElement {
+    const IDENTITY: ZStarElement = ZStarElement { v: UBig::ONE};
+    const ORDER: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
+
+    fn operator(self, other: Self) -> Self {
+        ZStarElement { v: mul_mod(self.v, other.v, Self::ORDER) }
+    }
+}
+
+//////////////////// Main testing.
 
 fn main() {
     /* (domain parameters) */

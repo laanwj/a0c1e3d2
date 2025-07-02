@@ -61,7 +61,7 @@ fn group_exp<T: GroupElement + Copy>(a: T, b: UBig) -> T {
 
 /// Compute a^-1
 fn group_inv<T: GroupElement + Copy>(a: T) -> T {
-    group_exp(a, T::ORDER.sub(UBig::TWO))
+    group_exp(a, T::ORDER.sub(UBig::ONE))
 }
 
 //////////////////// ElGamal implementation.
@@ -123,12 +123,18 @@ struct ZStarElement {
     v: UBig
 }
 
+impl ZStarElement {
+    const MODULUS: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
+}
+
 impl GroupElement for ZStarElement {
-    const IDENTITY: ZStarElement = ZStarElement { v: UBig::ONE};
-    const ORDER: UBig = UBig::parse_str_radix("eacb15fa75b90bbbe13663a539814e3318ec6b21cc5d51c1a8182484ffa90edf", 16);
+    /// Multiplicative identity
+    const IDENTITY: ZStarElement = ZStarElement { v: UBig::ONE };
+    /// Order of ZStar is p - 1
+    const ORDER: UBig = Self::MODULUS.sub(UBig::ONE);
 
     fn operator(self, other: Self) -> Self {
-        ZStarElement { v: mul_mod(self.v, other.v, Self::ORDER) }
+        ZStarElement { v: mul_mod(self.v, other.v, Self::MODULUS) }
     }
 }
 

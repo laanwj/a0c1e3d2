@@ -1,9 +1,9 @@
 // Exercises for Crypto Camp week 1
 // Mara van Der Laan 2025
 // SPDX-License-Identifier: MIT
+use bnum::cast::CastFrom;
 use bnum::types::U256;
 use bnum::BUint;
-use bnum::cast::As;
 
 /// The unsigned fixed-size bignum type to use.
 type UBig = U256;
@@ -29,8 +29,8 @@ fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     // TODO: does this actually need a double-width type, would computing
     // h * ((1 << UBig::BITS) % c) + l  mod c do?
     // (yes, but this doesn't work around the need for a larger type)
-    let r = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
-    (r % c.as_::<UDoubleBig>()).as_::<UBig>()
+    let r = UDoubleBig::cast_from(h).shl(UBig::BITS) + UDoubleBig::cast_from(l);
+    UBig::cast_from(r % UDoubleBig::cast_from(c))
 }
 
 /// Compute a^b mod c (pre: a<c)
@@ -158,12 +158,12 @@ mod tests {
         assert_eq!(add_mod(a, b, c), UBig::parse_str_radix("8b2e8581014d084965665c74c76e60d3c77832b9ad4a7b17270f667b7cbf42b", 16));
         assert_eq!(mul_mod(a, b, c), UBig::parse_str_radix("d464555ce28a5038f079c5deb138d690ce17b5494e74cfd476ce90d8111a977f", 16));
         assert_eq!(add_mod(c.sub(UBig::ONE), c.sub(UBig::ONE), c), UBig::parse_str_radix("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d", 16));
-        assert_eq!(exp_mod(a, 1.as_(), c), UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16));
-        assert_eq!(exp_mod(a, 2.as_(), c), UBig::parse_str_radix("df8260402e69f79604fed563aa05a46ff0154fe44bf61395b47389fca7cd2456", 16));
-        assert_eq!(exp_mod(a, 4.as_(), c), UBig::parse_str_radix("d7f85719c86c38a423b316e96edd305684a6945cfe09962755c5e710ecfe4c3e", 16));
-        assert_eq!(exp_mod(a, 5.as_(), c), UBig::parse_str_radix("f7bebff2021a7c03b043fe20eaae900af6a46eec64feb01ea9143debb9615a61", 16));
-        assert_eq!(exp_mod(a, 8.as_(), c), UBig::parse_str_radix("26e4819834c6d91cdfb5d2b58205bcab017629be932d83bce74a71f5fea5fe99", 16));
-        assert_eq!(exp_mod(a, 0x12345678.as_(), c), UBig::parse_str_radix("8ac2769dd082094c4c4366047e17615673e9a8978da0f8ed9a53459a2f2c3294", 16));
+        assert_eq!(exp_mod(a, UBig::from(1u32), c), UBig::parse_str_radix("a4b48d82c05eb1b29f73f4875e9839b97a971eea1c53e96c4658942f57b8dd8a", 16));
+        assert_eq!(exp_mod(a, UBig::from(2u32), c), UBig::parse_str_radix("df8260402e69f79604fed563aa05a46ff0154fe44bf61395b47389fca7cd2456", 16));
+        assert_eq!(exp_mod(a, UBig::from(4u32), c), UBig::parse_str_radix("d7f85719c86c38a423b316e96edd305684a6945cfe09962755c5e710ecfe4c3e", 16));
+        assert_eq!(exp_mod(a, UBig::from(5u32), c), UBig::parse_str_radix("f7bebff2021a7c03b043fe20eaae900af6a46eec64feb01ea9143debb9615a61", 16));
+        assert_eq!(exp_mod(a, UBig::from(8u32), c), UBig::parse_str_radix("26e4819834c6d91cdfb5d2b58205bcab017629be932d83bce74a71f5fea5fe99", 16));
+        assert_eq!(exp_mod(a, UBig::from(0x12345678u32), c), UBig::parse_str_radix("8ac2769dd082094c4c4366047e17615673e9a8978da0f8ed9a53459a2f2c3294", 16));
 
         let p = c;
         for b in 1u32..10u32 {

@@ -3,21 +3,20 @@
 // SPDX-License-Identifier: MIT
 use bnum::types::U256;
 use bnum::BUint;
-use bnum::cast::As;
+use bnum::cast::CastFrom;
 
 /// The unsigned fixed-size bignum type to use.
 type UBig = U256;
 
 /// Compute a*b mod c (pre: a<c and b<c)
-#[allow(dead_code)]
 fn mul_mod(a: UBig, b: UBig, c: UBig) -> UBig {
     type UDoubleBig = BUint<{((UBig::BITS * 2) / 64) as usize}>;
     let (l, h) = a.widening_mul(b);
     // TODO: does this actually need a double-width type, would computing
     // h * ((1 << UBig::BITS) % c) + l  mod c do?
     // (yes, but this doesn't work around the need for a larger type)
-    let r = h.as_::<UDoubleBig>().shl(UBig::BITS) + l.as_::<UDoubleBig>();
-    (r % c.as_::<UDoubleBig>()).as_::<UBig>()
+    let r = UDoubleBig::cast_from(h).shl(UBig::BITS) + UDoubleBig::cast_from(l);
+    UBig::cast_from(r % UDoubleBig::cast_from(c))
 }
 
 /// Generate random key mod p
@@ -103,6 +102,7 @@ fn elgamal_from_priv<T: GroupElement + Copy>(params: &DomainParameters<T>, x: UB
 }
 
 /// Generate a new ElGamal keypair.
+#[allow(dead_code)]
 fn elgamal_gen_keypair<T: GroupElement + Copy>(params: &DomainParameters<T>) -> PrivKey<T> {
     elgamal_from_priv(params, rand_key_mod_p(T::ORDER))
 }
@@ -117,7 +117,7 @@ fn elgamal_encrypt<T: GroupElement + Copy>(params: &DomainParameters<T>, pubkey:
 }
 
 /// ElGamal decrypt a message.
-fn elgamal_decrypt<T: GroupElement + Copy>(params: &DomainParameters<T>, privkey: &PrivKey<T>, c1: T, c2: T) -> T {
+fn elgamal_decrypt<T: GroupElement + Copy>(_params: &DomainParameters<T>, privkey: &PrivKey<T>, c1: T, c2: T) -> T {
     group_inv(group_exp(c1, privkey.x)).operator(c2)
 }
 
